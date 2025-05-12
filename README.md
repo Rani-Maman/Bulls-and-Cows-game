@@ -1,1 +1,1 @@
-# Ex02-Rani-212250054-Netanel-211878558
+Bulls and cows console game for a C# course
