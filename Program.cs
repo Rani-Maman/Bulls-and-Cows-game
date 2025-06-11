@@ -6,8 +6,8 @@ namespace Ex02
     {
         public static void Main()
         {
-            GameLogic.StartGame();
+            GameUI gameUI = new GameUI();
+            gameUI.Run();
         }
-
     }
 }

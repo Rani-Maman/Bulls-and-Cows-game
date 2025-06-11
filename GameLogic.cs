@@ -1,97 +1,143 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Security.Permissions;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Ex02
 {
     public class GameLogic
     {
-        public const string k_UserEndsGame = "Q";
-        public const int k_GameWonAmount = 4;
+        private const int k_GameWonAmount = 4;
+        private const int k_MinNumOfGuess = 4;
+        private const int k_MaxNumOfGuess = 10;
+        private const int k_ValidGuessLength = 4;
+        private const char k_FirstLetterOfRange = 'A';
+        private const char k_LastLetterOfRange = 'H';
 
         public struct UserGuess
         {
-            public string GuessWord { get; }
-            public int RightLettersInRightPosCount { get; set; } 
-            public int RightLettersInWrongPosCount { get; set; }
+            private string m_GuessWord;
+            private int m_RightLettersInRightPosCount;
+            private int m_RightLettersInWrongPosCount;
 
-            public UserGuess(string i_userInput)
+            public UserGuess(string i_UserInput)
             {
-                GuessWord = i_userInput;
-                RightLettersInRightPosCount = 0;
-                RightLettersInWrongPosCount = 0;
+                m_GuessWord = i_UserInput;
+                m_RightLettersInRightPosCount = 0;
+                m_RightLettersInWrongPosCount = 0;
+            }
+
+            public string GuessWord
+            {
+                get { return m_GuessWord; }
+            }
+            public int RightLettersInRightPosCount
+            {
+                get { return m_RightLettersInRightPosCount; }
+                set { m_RightLettersInRightPosCount = value; }
+            }
+            public int RightLettersInWrongPosCount
+            {
+                get { return m_RightLettersInWrongPosCount; }
+                set { m_RightLettersInWrongPosCount = value; }
             }
         }
+        private SecretWord m_SecretWord;
+        private List<UserGuess> m_GuessesHistory;
+        private int m_MaxNumOfGuesses;
 
-        public static void StartGame()
+        public GameLogic(int i_MaxNumOfGuesses)
         {
-            SecretWord newSecretWord = new SecretWord();
-
-            while (startRound(newSecretWord, GameUI.GetNumberOfGuesses()))
-            {
-                newSecretWord = new SecretWord();
-            }
+            m_SecretWord = new SecretWord();
+            m_GuessesHistory = new List<UserGuess>();
+            m_MaxNumOfGuesses = i_MaxNumOfGuesses;
         }
 
-        private static bool startRound(SecretWord i_secretWord, int i_maxNumOfGuesses)
+        public List<UserGuess> GuessesHistory
         {
-            bool isContinuing = true;
-            string currentGuess = "";
-            bool isWin = false;
-            List<UserGuess> guessesHistory = new List<UserGuess>();
-            int currentGuessesCount = 0;
-            
-            while(!isWin && !isOutOfTurns(currentGuessesCount, i_maxNumOfGuesses) && isContinuing)
+            get { return m_GuessesHistory; }
+        }
+        public string SecretWordValue
+        {
+            get { return m_SecretWord.SecretWordValue; }
+        }
+        public int MaxNumOfGuesses
+        {
+            get { return m_MaxNumOfGuesses; }
+        }
+        public int NumGuessesMade
+        {
+            get { return m_GuessesHistory.Count; }
+        }
+        public bool IsWin
+        {
+            get
             {
-                GameUI.DisplayBoard(guessesHistory, i_maxNumOfGuesses);
-                currentGuess = GameUI.GetUserGuess();
-                if(currentGuess == k_UserEndsGame) //'Q'
+                bool isWin = false;
+                foreach (UserGuess guess in m_GuessesHistory)
                 {
-                    GameUI.PrintUserExitMessage();
-                    isContinuing = false;
-                }
-                else
-                {
-                    UserGuess currentUserGuess = new UserGuess(currentGuess);
-
-                    i_secretWord.CheckUserGuess(ref currentUserGuess);
-                    guessesHistory.Add(currentUserGuess);
-                    GameUI.DisplayBoard(guessesHistory, i_maxNumOfGuesses);
-
-                    if (checkIfUserWon(currentUserGuess))
+                    if (guess.RightLettersInRightPosCount == k_GameWonAmount)
                     {
                         isWin = true;
-                    }
-                    else
-                    {
-                        currentGuessesCount++;
+                        break;
                     }
                 }
 
+                return isWin;
             }
-            if(isContinuing)
+
+        }
+        public bool IsOutOfTurns
+        {
+            get { return m_GuessesHistory.Count >= m_MaxNumOfGuesses; }
+        }
+        public bool IsGameOver
+        {
+            get { return IsWin || IsOutOfTurns; }
+        }
+
+        public bool CheckValidGuesses(int i_NumOfGuesses)
+        {
+            return i_NumOfGuesses >= k_MinNumOfGuess && i_NumOfGuesses <= k_MaxNumOfGuess;
+        }
+
+        public bool IsValidGuess(string i_Guess)
+        {
+            bool isValid = true;
+
+            if (string.IsNullOrEmpty(i_Guess) || i_Guess.Length != k_ValidGuessLength)
             {
-                currentGuessesCount++;
-                GameUI.printReasonForEndOfRound(isWin, i_secretWord.SecretWordValue, currentGuessesCount);
-                isContinuing = GameUI.AskUserForAnotherRound();
+                isValid = false;
+            }
+            else
+            {
+                for (int i = 0; i < i_Guess.Length && isValid; i++)
+                {
+                    char letter = i_Guess[i];
+
+                    if (letter < k_FirstLetterOfRange || letter > k_LastLetterOfRange || !char.IsUpper(letter))
+                    {
+                        isValid = false;
+                    }
+                    for (int j = 0; j < i && isValid; j++)
+                    {
+                        if (i_Guess[i] == i_Guess[j])
+                        {
+                            isValid = false;
+                        }
+                    }
+                }
             }
 
-            return isContinuing;
+            return isValid;
         }
 
-        public static bool isOutOfTurns(int i_currentNumOfGuesses, int i_maxNumOfGuesses)
+        public UserGuess AddGuess(string i_Guess)
         {
-            return i_currentNumOfGuesses == i_maxNumOfGuesses;
-        }
+            UserGuess currentUserGuess = new UserGuess(i_Guess);
+            
+            m_SecretWord.CheckUserGuess(ref currentUserGuess);
+            m_GuessesHistory.Add(currentUserGuess);
 
-        private static bool checkIfUserWon(UserGuess i_currentGuess) 
-        {
-            return i_currentGuess.RightLettersInRightPosCount == k_GameWonAmount;
+            return currentUserGuess;
         }
-        
     }
 }

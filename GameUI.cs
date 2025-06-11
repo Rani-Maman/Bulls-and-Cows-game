@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Ex02
 {
-    internal class GameUI
+    public class GameUI
     {
         private const string k_WinningResult = "VVVV";
         private const string k_UserNoNewGame = "N";
@@ -14,103 +11,121 @@ namespace Ex02
         private const int k_ValidGuessLength = 4;
         private const int k_PaddingAmountResultCol = 7;
         private const int k_PaddingAmountGuessCol = 6;
-        private const int k_MinNumOfGuess = 4;
-        private const int k_MaxNumOfGuess = 10;
-        private const char k_FirstLetterOfRange = 'A';
-        private const char k_LastLetterOfRange = 'H';
         private const char k_RightLetterInRightPlace = 'V';
         private const char k_RightLetterInWrongPlace = 'X';
+        private const string k_UserEndsGame = "Q";
 
-        public static int GetNumberOfGuesses()
+        public void Run()
         {
-            int numOfGuesses;
-            bool isValidNumber;
+            bool playAgain = true;
+
+            while (playAgain)
+            {
+                int numGuesses = GetNumberOfGuesses();
+                GameLogic gameLogic = new GameLogic(numGuesses);
+
+                while (!gameLogic.IsGameOver)
+                {
+                    DisplayBoard(gameLogic.GuessesHistory, numGuesses);
+
+                    string userGuess = GetUserGuess();
+                    if (userGuess == k_UserEndsGame)
+                    {
+                        PrintUserExitMessage();
+                        return;
+                    }
+
+                    if (!gameLogic.IsValidGuess(userGuess))
+                    {
+                        Console.WriteLine("Invalid guess. Make sure it's 4 unique letters between A and H.");
+                        continue;
+                    }
+
+                    gameLogic.AddGuess(userGuess);
+                }
+
+                DisplayBoard(gameLogic.GuessesHistory, numGuesses);
+                printReasonForEndOfRound(gameLogic.IsWin, gameLogic.SecretWordValue, gameLogic.NumGuessesMade);
+
+                playAgain = AskUserForAnotherRound();
+            }
+        }
+
+        public int GetNumberOfGuesses()
+        {
+            int numOfGuesses = 0;
+            bool isValidNumber = false;
 
             do
             {
                 Console.Write("Please enter the number of guesses (4–10): ");
                 string input = Console.ReadLine();
+                int parsed = 0;
 
-                isValidNumber = int.TryParse(input, out numOfGuesses) && checkValidGuesses(numOfGuesses);
-
-                if (!isValidNumber)
+                isValidNumber = int.TryParse(input, out parsed) && (parsed >= 4 && parsed <= 10);
+                if (isValidNumber)
+                {
+                    numOfGuesses = parsed;
+                }
+                else
                 {
                     Console.WriteLine("Invalid input. Please enter a number between 4 and 10.");
                 }
-
             } while (!isValidNumber);
 
             return numOfGuesses;
         }
-        private static bool checkValidGuesses(int i_NumOfGuesses)
+
+        public string GetUserGuess()
         {
-            bool isNumberValid = true;
-
-            if (i_NumOfGuesses < k_MinNumOfGuess || i_NumOfGuesses > k_MaxNumOfGuess)
-            {
-                isNumberValid = false;
-                Console.WriteLine("Invalid number of guesses");
-            }
-
-            return isNumberValid;
-        }
-
-        public static string GetUserGuess()
-        {
-            string guess = "";
+            string guess = string.Empty;
             bool isValid = false;
-            string userInput = "";
 
             do
             {
                 Console.WriteLine("Enter your guess (4 unique letters from A–H, or Q to quit): ");
-                guess = Console.ReadLine()?.ToUpper().Trim();
-
-                if (guess == GameLogic.k_UserEndsGame)
+                guess = Console.ReadLine();
+                if (guess != null)
                 {
-                    userInput = GameLogic.k_UserEndsGame;
-                    break;
+                    guess = guess.Trim();
                 }
-                isValid = isValidGuess(guess);
-                if (!isValid)
+                else
                 {
-                    Console.WriteLine("Invalid guess. Make sure it's 4 unique letters between A and H.");
+                    guess = string.Empty;
+                }
+                if (guess == k_UserEndsGame)
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    isValid = guess.Length > 0;
+                    if (!isValid)
+                    {
+                        Console.WriteLine("Guess cannot be empty.");
+                    }
                 }
             }
             while (!isValid);
 
-            userInput = guess;
-            return userInput;
+            return guess;
         }
 
-        private static bool isValidGuess(string i_guess)
-        {
-            if (i_guess == null || i_guess.Length != k_ValidGuessLength)
-                return false;
 
-            foreach (char letter in i_guess)
-            {
-                if (letter < k_FirstLetterOfRange || letter > k_LastLetterOfRange)
-                    return false;
-            }
-
-            return i_guess.Distinct().Count() == k_ValidGuessLength;
-        }
-
-        public static void DisplayBoard(List<GameLogic.UserGuess> historyOfGuesses, int i_maxGuesses)
+        public void DisplayBoard(List<GameLogic.UserGuess> i_HistoryOfGuesses, int i_MaxGuesses)
         {
             bool isWin = false;
 
-            Ex02.ConsoleUtils.Screen.Clear();
+            Console.Clear();
             Console.WriteLine("Current board status:");
             Console.WriteLine("|Pins: |Result:|");
             Console.WriteLine("================");
             Console.WriteLine("|####  |       |");
-            for (int i = 0; i < i_maxGuesses; i++)
+            for (int i = 0; i < i_MaxGuesses; i++)
             {
-                if (i < historyOfGuesses.Count)
+                if (i < i_HistoryOfGuesses.Count)
                 {
-                    printFormattedGuessAndResult(historyOfGuesses[i], ref isWin);
+                    printFormattedGuessAndResult(i_HistoryOfGuesses[i], ref isWin);
                 }
                 else
                 {
@@ -118,53 +133,69 @@ namespace Ex02
                 }
             }
             Console.WriteLine("================");
-            if (!GameLogic.isOutOfTurns(historyOfGuesses.Count, i_maxGuesses))
+            if (i_HistoryOfGuesses.Count < i_MaxGuesses && !isWin)
             {
-                if(!isWin)
-                {
-                    Console.WriteLine("Please type your next guess or 'Q' to quit");
-                }
+                Console.WriteLine("Please type your next guess or 'Q' to quit");
             }
         }
 
-        private static void printFormattedGuessAndResult(GameLogic.UserGuess i_currentGuess, ref bool io_isWin)
+        private static void printFormattedGuessAndResult(GameLogic.UserGuess i_CurrentGuess, ref bool io_IsWin)
         {
-            string feedbackOnGuess = new string(k_RightLetterInRightPlace, i_currentGuess.RightLettersInRightPosCount) + new string(k_RightLetterInWrongPlace, i_currentGuess.RightLettersInWrongPosCount);
-            string paddedGuess = i_currentGuess.GuessWord.PadRight(k_PaddingAmountGuessCol);     
-            string paddedFeedbackOnGuess = feedbackOnGuess.PadRight(k_PaddingAmountResultCol);        
+            string feedbackOnGuess = new string(k_RightLetterInRightPlace, i_CurrentGuess.RightLettersInRightPosCount)
+                                   + new string(k_RightLetterInWrongPlace, i_CurrentGuess.RightLettersInWrongPosCount);
+            string paddedGuess = i_CurrentGuess.GuessWord.PadRight(k_PaddingAmountGuessCol);
+            string paddedFeedbackOnGuess = feedbackOnGuess.PadRight(k_PaddingAmountResultCol);
 
-            Console.WriteLine($"|{paddedGuess}|{paddedFeedbackOnGuess}|");
-            if(feedbackOnGuess == k_WinningResult)
+            Console.WriteLine("|" + paddedGuess + "|" + paddedFeedbackOnGuess + "|");
+            if (feedbackOnGuess == k_WinningResult)
             {
-                io_isWin = true;
+                io_IsWin = true;
             }
         }
 
-        public static void printReasonForEndOfRound(bool i_isWin, string i_secretWord, int i_currentNumOfGuesses)
+        public void printReasonForEndOfRound(bool i_IsWin, string i_SecretWord, int i_CurrentNumOfGuesses)
         {
-            if (!i_isWin)
+            if (!i_IsWin)
             {
-                Console.WriteLine($"You have run out of guesses, the secret word was: {i_secretWord}");
+                Console.WriteLine("You have run out of guesses, the secret word was: " + i_SecretWord);
             }
-            else //User won
+            else
             {
-                Console.WriteLine($"Congratulations, you have won the game with: {i_currentNumOfGuesses} {(i_currentNumOfGuesses == 1 ? "guess" : "guesses")}!");
+                Console.WriteLine("Congratulations, you have won the game with: " + i_CurrentNumOfGuesses
+                    + (i_CurrentNumOfGuesses == 1 ? " guess!" : " guesses!"));
             }
         }
 
-        public static bool AskUserForAnotherRound()
+        public bool AskUserForAnotherRound()
         {
-            string userAnswer = "";
+            string userAnswer = string.Empty; 
             bool isContinuing = false;
 
             Console.WriteLine("Would you like to start another game <Y/N> ?");
-            userAnswer = Console.ReadLine()?.Trim().ToUpper();
+            userAnswer = Console.ReadLine();
+            if (userAnswer != null)
+            {
+                userAnswer = userAnswer.Trim().ToUpper();
+            }
+            else
+            {
+                userAnswer = string.Empty;
+            }
+
             while (!isUserAnswerValid(userAnswer))
             {
                 Console.WriteLine("Invalid input, try again <Y/N> : ");
-                userAnswer = Console.ReadLine()?.Trim().ToUpper();
+                userAnswer = Console.ReadLine();
+                if (userAnswer != null)
+                {
+                    userAnswer = userAnswer.Trim().ToUpper();
+                }
+                else
+                {
+                    userAnswer = string.Empty;
+                }
             }
-            if(userAnswer == k_UserNoNewGame)
+            if (userAnswer == k_UserNoNewGame)
             {
                 isContinuing = false;
                 PrintUserExitMessage();
@@ -177,9 +208,9 @@ namespace Ex02
             return isContinuing;
         }
 
-        private static bool isUserAnswerValid(string i_userAnswer)
+        private static bool isUserAnswerValid(string i_UserAnswer)
         {
-          return i_userAnswer == k_UserNewGame || i_userAnswer == k_UserNoNewGame;
+            return i_UserAnswer == k_UserNewGame || i_UserAnswer == k_UserNoNewGame;
         }
 
         public static void PrintUserExitMessage()

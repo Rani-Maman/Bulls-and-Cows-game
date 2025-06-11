@@ -1,17 +1,19 @@
 ﻿using System;
-using System.Linq;
 
 namespace Ex02
 {
     public class SecretWord
     {
-        private readonly string m_secretWord;
+        private string m_SecretWord;
 
-        public string SecretWordValue { get { return m_secretWord; } }
+        public string SecretWordValue
+        {
+            get { return m_SecretWord; }
+        }
 
         public SecretWord()
         {
-            m_secretWord = generateSecretWord();
+            m_SecretWord = generateSecretWord();
         }
 
         private static string generateSecretWord()
@@ -24,27 +26,30 @@ namespace Ex02
             for (int i = shuffledLetters.Length - 1; i > 0; i--)
             {
                 randomIndex = randomGenerator.Next(0, i + 1);
-                (shuffledLetters[i], shuffledLetters[randomIndex]) = (shuffledLetters[randomIndex], shuffledLetters[i]);
+                char temp = shuffledLetters[i];
+                shuffledLetters[i] = shuffledLetters[randomIndex];
+                shuffledLetters[randomIndex] = temp;
             }
 
             return new string(shuffledLetters, 0, 4);
         }
 
-        public void CheckUserGuess(ref GameLogic.UserGuess io_currentGuess)
+        public void CheckUserGuess(ref GameLogic.UserGuess io_CurrentGuess)
         {
-            for (int i = 0; i < io_currentGuess.GuessWord.Length; i++)
+            for (int i = 0; i < io_CurrentGuess.GuessWord.Length; i++)
             {
-                char currentCharInGuess = io_currentGuess.GuessWord[i];
+                char currentCharInGuess = io_CurrentGuess.GuessWord[i];
 
-                if (m_secretWord.Contains(currentCharInGuess))
+                int posInSecret = m_SecretWord.IndexOf(currentCharInGuess);
+                if (posInSecret != -1)
                 {
-                    if (m_secretWord[i] == currentCharInGuess)
+                    if (m_SecretWord[i] == currentCharInGuess)
                     {
-                        io_currentGuess.RightLettersInRightPosCount++;
+                        io_CurrentGuess.RightLettersInRightPosCount++;
                     }
                     else
                     {
-                        io_currentGuess.RightLettersInWrongPosCount++;
+                        io_CurrentGuess.RightLettersInWrongPosCount++;
                     }
                 }
             }
